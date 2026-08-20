@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+const messageSeparator = "━━━━━━━━━━━━━━━━━━━━━\n"
+
 // escapeHTML escapes special HTML characters in a string for Telegram HTML parse mode.
 func escapeHTML(s string) string {
 	return html.EscapeString(s)
@@ -18,6 +20,13 @@ func linkTitle(link HALLink, fallback string) string {
 		return link.Title
 	}
 	return fallback
+}
+
+// writeLinkField writes an emoji, label, and link title if the link title is not empty.
+func writeLinkField(b *strings.Builder, emoji, label string, link HALLink) {
+	if title := linkTitle(link, ""); title != "" {
+		b.WriteString(fmt.Sprintf("%s <b>%s:</b> %s\n", emoji, label, escapeHTML(title)))
+	}
 }
 
 // truncate limits a string to maxLen characters, appending "..." if truncated.
@@ -48,7 +57,7 @@ func FormatMessage(action string, payload *WebhookPayload, openProjectURL string
 	case "work_package":
 		return formatWorkPackage(event, payload, openProjectURL)
 	case "time_entry":
-		return formatTimeEntry(event, payload, openProjectURL)
+		return formatTimeEntry(event, payload)
 	case "project":
 		return formatProject(event, payload, openProjectURL)
 	case "membership":
@@ -73,44 +82,11 @@ func formatWorkPackage(event string, payload *WebhookPayload, baseURL string) st
 
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("%s <b>Work Package %s</b>\n", emoji, escapeHTML(actionLabel)))
-	b.WriteString("━━━━━━━━━━━━━━━━━━━━━\n")
+	b.WriteString(messageSeparator)
 	b.WriteString(fmt.Sprintf("📌 <b>Subject:</b> %s\n", escapeHTML(wp.Subject)))
 
-	if t := linkTitle(wp.Links.Type, ""); t != "" {
-		b.WriteString(fmt.Sprintf("🏷️ <b>Type:</b> %s\n", escapeHTML(t)))
-	}
-	if s := linkTitle(wp.Links.Status, ""); s != "" {
-		b.WriteString(fmt.Sprintf("📊 <b>Status:</b> %s\n", escapeHTML(s)))
-	}
-	if p := linkTitle(wp.Links.Priority, ""); p != "" {
-		b.WriteString(fmt.Sprintf("⚡ <b>Priority:</b> %s\n", escapeHTML(p)))
-	}
-	if a := linkTitle(wp.Links.Author, ""); a != "" {
-		b.WriteString(fmt.Sprintf("👤 <b>Author:</b> %s\n", escapeHTML(a)))
-	}
-	if a := linkTitle(wp.Links.Assignee, ""); a != "" {
-		b.WriteString(fmt.Sprintf("👷 <b>Assignee:</b> %s\n", escapeHTML(a)))
-	}
-	if r := linkTitle(wp.Links.Responsible, ""); r != "" {
-		b.WriteString(fmt.Sprintf("🎯 <b>Responsible:</b> %s\n", escapeHTML(r)))
-	}
-	if proj := linkTitle(wp.Links.Project, ""); proj != "" {
-		b.WriteString(fmt.Sprintf("📁 <b>Project:</b> %s\n", escapeHTML(proj)))
-	}
-	if v := linkTitle(wp.Links.Version, ""); v != "" {
-		b.WriteString(fmt.Sprintf("📦 <b>Version:</b> %s\n", escapeHTML(v)))
-	}
-
-	if wp.PercentageDone > 0 {
-		b.WriteString(fmt.Sprintf("📈 <b>Progress:</b> %d%%\n", wp.PercentageDone))
-	}
-
-	if wp.StartDate != nil && *wp.StartDate != "" {
-		b.WriteString(fmt.Sprintf("📅 <b>Start:</b> %s\n", escapeHTML(*wp.StartDate)))
-	}
-	if wp.DueDate != nil && *wp.DueDate != "" {
-		b.WriteString(fmt.Sprintf("📅 <b>Due:</b> %s\n", escapeHTML(*wp.DueDate)))
-	}
+	writeWorkPackageLinks(&b, &wp.Links)
+	writeWorkPackageMeta(&b, &wp)
 
 	if desc := truncate(wp.Description.Raw, 200); desc != "" {
 		b.WriteString(fmt.Sprintf("\n📝 %s\n", escapeHTML(desc)))
@@ -124,11 +100,34 @@ func formatWorkPackage(event string, payload *WebhookPayload, baseURL string) st
 	return b.String()
 }
 
+func writeWorkPackageLinks(b *strings.Builder, links *WorkPackageLinks) {
+	writeLinkField(b, "🏷️", "Type", links.Type)
+	writeLinkField(b, "📊", "Status", links.Status)
+	writeLinkField(b, "⚡", "Priority", links.Priority)
+	writeLinkField(b, "👤", "Author", links.Author)
+	writeLinkField(b, "👷", "Assignee", links.Assignee)
+	writeLinkField(b, "🎯", "Responsible", links.Responsible)
+	writeLinkField(b, "📁", "Project", links.Project)
+	writeLinkField(b, "📦", "Version", links.Version)
+}
+
+func writeWorkPackageMeta(b *strings.Builder, wp *WorkPackage) {
+	if wp.PercentageDone > 0 {
+		b.WriteString(fmt.Sprintf("📈 <b>Progress:</b> %d%%\n", wp.PercentageDone))
+	}
+	if wp.StartDate != nil && *wp.StartDate != "" {
+		b.WriteString(fmt.Sprintf("📅 <b>Start:</b> %s\n", escapeHTML(*wp.StartDate)))
+	}
+	if wp.DueDate != nil && *wp.DueDate != "" {
+		b.WriteString(fmt.Sprintf("📅 <b>Due:</b> %s\n", escapeHTML(*wp.DueDate)))
+	}
+}
+
 // =============================================================================
 // Time Entry formatter
 // =============================================================================
 
-func formatTimeEntry(event string, payload *WebhookPayload, baseURL string) string {
+func formatTimeEntry(event string, payload *WebhookPayload) string {
 	var te TimeEntry
 	if err := unmarshalSafe(payload.TimeEntry, &te); err != nil {
 		return formatFallback("Time Entry", event, err)
@@ -139,24 +138,17 @@ func formatTimeEntry(event string, payload *WebhookPayload, baseURL string) stri
 
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("%s <b>Time Entry %s</b>\n", emoji, escapeHTML(actionLabel)))
-	b.WriteString("━━━━━━━━━━━━━━━━━━━━━\n")
+	b.WriteString(messageSeparator)
 
-	if u := linkTitle(te.Links.User, ""); u != "" {
-		b.WriteString(fmt.Sprintf("👤 <b>User:</b> %s\n", escapeHTML(u)))
-	}
+	writeLinkField(&b, "👤", "User", te.Links.User)
 	b.WriteString(fmt.Sprintf("⏱️ <b>Hours:</b> %s\n", escapeHTML(te.Hours)))
 	if te.SpentOn != "" {
 		b.WriteString(fmt.Sprintf("📅 <b>Date:</b> %s\n", escapeHTML(te.SpentOn)))
 	}
-	if a := linkTitle(te.Links.Activity, ""); a != "" {
-		b.WriteString(fmt.Sprintf("🏷️ <b>Activity:</b> %s\n", escapeHTML(a)))
-	}
-	if wp := linkTitle(te.Links.WorkPackage, ""); wp != "" {
-		b.WriteString(fmt.Sprintf("📌 <b>Work Package:</b> %s\n", escapeHTML(wp)))
-	}
-	if proj := linkTitle(te.Links.Project, ""); proj != "" {
-		b.WriteString(fmt.Sprintf("📁 <b>Project:</b> %s\n", escapeHTML(proj)))
-	}
+	writeLinkField(&b, "🏷️", "Activity", te.Links.Activity)
+	writeLinkField(&b, "📌", "Work Package", te.Links.WorkPackage)
+	writeLinkField(&b, "📁", "Project", te.Links.Project)
+
 	if comment := truncate(te.Comment.Raw, 200); comment != "" {
 		b.WriteString(fmt.Sprintf("\n💬 %s\n", escapeHTML(comment)))
 	}
@@ -179,18 +171,15 @@ func formatProject(event string, payload *WebhookPayload, baseURL string) string
 
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("%s <b>Project %s</b>\n", emoji, escapeHTML(actionLabel)))
-	b.WriteString("━━━━━━━━━━━━━━━━━━━━━\n")
+	b.WriteString(messageSeparator)
 	b.WriteString(fmt.Sprintf("📁 <b>Name:</b> %s\n", escapeHTML(proj.Name)))
 
 	if proj.Identifier != "" {
 		b.WriteString(fmt.Sprintf("🆔 <b>Identifier:</b> %s\n", escapeHTML(proj.Identifier)))
 	}
-	if p := linkTitle(proj.Links.Parent, ""); p != "" {
-		b.WriteString(fmt.Sprintf("📂 <b>Parent:</b> %s\n", escapeHTML(p)))
-	}
-	if s := linkTitle(proj.Links.Status, ""); s != "" {
-		b.WriteString(fmt.Sprintf("📊 <b>Status:</b> %s\n", escapeHTML(s)))
-	}
+	writeLinkField(&b, "📂", "Parent", proj.Links.Parent)
+	writeLinkField(&b, "📊", "Status", proj.Links.Status)
+
 	statusText := "Active"
 	if !proj.Active {
 		statusText = "Inactive"
@@ -224,14 +213,10 @@ func formatMembership(event string, payload *WebhookPayload) string {
 
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("%s <b>Membership %s</b>\n", emoji, escapeHTML(actionLabel)))
-	b.WriteString("━━━━━━━━━━━━━━━━━━━━━\n")
+	b.WriteString(messageSeparator)
 
-	if p := linkTitle(m.Links.Principal, ""); p != "" {
-		b.WriteString(fmt.Sprintf("👤 <b>User:</b> %s\n", escapeHTML(p)))
-	}
-	if proj := linkTitle(m.Links.Project, ""); proj != "" {
-		b.WriteString(fmt.Sprintf("📁 <b>Project:</b> %s\n", escapeHTML(proj)))
-	}
+	writeLinkField(&b, "👤", "User", m.Links.Principal)
+	writeLinkField(&b, "📁", "Project", m.Links.Project)
 
 	if len(m.Links.Roles) > 0 {
 		var roleNames []string
@@ -255,7 +240,7 @@ func formatMembership(event string, payload *WebhookPayload) string {
 func formatGeneric(action string, _ *WebhookPayload) string {
 	var b strings.Builder
 	b.WriteString("🔔 <b>OpenProject Event</b>\n")
-	b.WriteString("━━━━━━━━━━━━━━━━━━━━━\n")
+	b.WriteString(messageSeparator)
 	b.WriteString(fmt.Sprintf("⚙️ <b>Action:</b> %s\n", escapeHTML(action)))
 	return b.String()
 }
@@ -264,7 +249,7 @@ func formatFallback(resource, event string, err error) string {
 	var b strings.Builder
 	emoji := eventEmoji(event)
 	b.WriteString(fmt.Sprintf("%s <b>%s %s</b>\n", emoji, escapeHTML(resource), escapeHTML(eventLabel(event))))
-	b.WriteString("━━━━━━━━━━━━━━━━━━━━━\n")
+	b.WriteString(messageSeparator)
 	b.WriteString(fmt.Sprintf("⚠️ Could not parse details: %s\n", escapeHTML(err.Error())))
 	return b.String()
 }
