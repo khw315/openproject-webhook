@@ -170,6 +170,74 @@ func TestFormatMessageMembership(t *testing.T) {
 	}
 }
 
+func TestFormatMessageWorkPackageComment(t *testing.T) {
+	wp := WorkPackage{
+		ID:      101,
+		Subject: "Fix security bug",
+		Links: WorkPackageLinks{
+			Project: HALLink{Title: "Core App"},
+		},
+	}
+	rawWP, _ := json.Marshal(wp)
+
+	act := ActivityResource{
+		ID:      12,
+		Comment: TextNode{Raw: "This has been resolved in master branch."},
+		Links: ActivityLinks{
+			User: HALLink{Title: "Alice"},
+		},
+	}
+	rawAct, _ := json.Marshal(act)
+
+	payload := WebhookPayload{
+		Action:      "work_package_comment:comment",
+		WorkPackage: rawWP,
+		Comment:     rawAct,
+	}
+
+	msg := FormatMessage(payload.Action, &payload, "https://openproject.example.com")
+	if !strings.Contains(msg, "Work Package Comment") {
+		t.Errorf("expected Work Package Comment in message, got %s", msg)
+	}
+	if !strings.Contains(msg, "Fix security bug") {
+		t.Errorf("expected Subject in message, got %s", msg)
+	}
+	if !strings.Contains(msg, "Core App") {
+		t.Errorf("expected Project in message, got %s", msg)
+	}
+	if !strings.Contains(msg, "Alice") {
+		t.Errorf("expected Author Alice in message, got %s", msg)
+	}
+	if !strings.Contains(msg, "This has been resolved in master branch.") {
+		t.Errorf("expected comment text, got %s", msg)
+	}
+	if !strings.Contains(msg, "https://openproject.example.com/work_packages/101") {
+		t.Errorf("expected OpenProject link, got %s", msg)
+	}
+
+	// Test with activity in payload.Activity and links inside activity
+	actOnly := ActivityResource{
+		Raw: "Another comment",
+		Links: ActivityLinks{
+			WorkPackage: HALLink{Href: "/api/v3/work_packages/202", Title: "Task 202"},
+			Project:     HALLink{Title: "Sub project"},
+			Author:      HALLink{Title: "Bob"},
+		},
+	}
+	rawActOnly, _ := json.Marshal(actOnly)
+	payloadAct := WebhookPayload{
+		Action:   "work_package_comment:comment",
+		Activity: rawActOnly,
+	}
+	msgAct := FormatMessage(payloadAct.Action, &payloadAct, "https://openproject.example.com")
+	if !strings.Contains(msgAct, "Task 202") || !strings.Contains(msgAct, "Sub project") || !strings.Contains(msgAct, "Bob") {
+		t.Errorf("expected fallback fields from activity resource, got %s", msgAct)
+	}
+	if !strings.Contains(msgAct, "/work_packages/202") {
+		t.Errorf("expected link parsed from href, got %s", msgAct)
+	}
+}
+
 func TestFormatMessageGenericAndFallback(t *testing.T) {
 	payload := WebhookPayload{Action: "ping"}
 	msg1 := FormatMessage("ping", &payload, "")
@@ -183,11 +251,7 @@ func TestFormatMessageGenericAndFallback(t *testing.T) {
 	}
 }
 
-func TestEventEmojiAndLabel(t *testing.T) {
-	if eventEmoji("created") != "✨" || eventEmoji("updated") != "✏️" || eventEmoji("deleted") != "🗑️" || eventEmoji("other") != "🔔" {
-		t.Error("unexpected emoji")
-	}
-
+func TestEventLabel(t *testing.T) {
 	if eventLabel("created") != "Created" || eventLabel("updated") != "Updated" || eventLabel("deleted") != "Deleted" || eventLabel("custom") != "Custom" || eventLabel("") != "" {
 		t.Error("unexpected label")
 	}

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Work Package Comment / Activity notifications**: Support `work_package_comment:comment` and journal events, extracting comment body, author, project, and direct link to OpenProject.
+
+### Changed
+
+- **Clean message formatting**: Removed emoji icons from all notification templates for a cleaner and more professional appearance.
+
 ## [0.1.0] - 2026-08-20
 
 ### Added

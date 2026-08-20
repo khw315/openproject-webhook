@@ -5,6 +5,7 @@ Service standalone Golang yang menerima webhook dari [OpenProject](https://www.o
 ## ✨ Fitur
 
 - 📋 Notifikasi **Work Package** (created, updated, deleted)
+- 💬 Notifikasi **Work Package Comment / Activity** (komentar & aktivitas)
 - ⏱️ Notifikasi **Time Entry** (created)
 - 📁 Notifikasi **Project** (created, updated)
 - 👥 Notifikasi **Membership** (created, updated)

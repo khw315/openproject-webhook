@@ -18,6 +18,33 @@ type WebhookPayload struct {
 	Attachment   json.RawMessage `json:"attachment,omitempty"`
 	WikiPage     json.RawMessage `json:"wiki_page,omitempty"`
 	News         json.RawMessage `json:"news,omitempty"`
+	Comment      json.RawMessage `json:"comment,omitempty"`
+	Activity     json.RawMessage `json:"activity,omitempty"`
+	Journal      json.RawMessage `json:"journal,omitempty"`
+}
+
+// =============================================================================
+// Activity / Comment
+// =============================================================================
+
+// ActivityLinks holds the _links section of an activity or comment resource.
+type ActivityLinks struct {
+	Self        HALLink `json:"self"`
+	WorkPackage HALLink `json:"workPackage"`
+	User        HALLink `json:"user"`
+	Author      HALLink `json:"author"`
+	Project     HALLink `json:"project"`
+}
+
+// ActivityResource represents an activity or journal comment from OpenProject.
+type ActivityResource struct {
+	Type      string        `json:"_type"`
+	ID        int           `json:"id"`
+	Comment   TextNode      `json:"comment"`
+	CreatedAt string        `json:"createdAt"`
+	UpdatedAt string        `json:"updatedAt"`
+	Links     ActivityLinks `json:"_links"`
+	Raw       string        `json:"raw"`
 }
 
 // =============================================================================
