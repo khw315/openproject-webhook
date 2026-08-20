@@ -5,15 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-08-20
 
 ### Added
 
-- **Work Package Comment / Activity notifications**: Support `work_package_comment:comment` and journal events, extracting comment body, author, project, and direct link to OpenProject.
+- **Work Package Comment & Activity Support**: Full support for OpenProject `work_package_comment:comment` events and journal activities, extracting comment body, author, subject, project, and direct links to OpenProject.
+- **Interactive Architecture Diagram**: Added a rich Mermaid flowchart in documentation illustrating the end-to-end webhook forwarding pipeline.
 
 ### Changed
 
-- **Clean message formatting**: Removed emoji icons from all notification templates for a cleaner and more professional appearance.
+- **Clean Notification Style**: Removed emoji icons from all notification templates (work packages, time entries, projects, memberships, comments) for a cleaner and more professional appearance.
+- **Documentation Revamp**: Updated `README.md` with comprehensive setup instructions, configuration references, and curl testing examples.
 
 ## [0.1.0] - 2026-08-20
 
