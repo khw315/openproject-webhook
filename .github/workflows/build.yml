@@ -11,8 +11,8 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  test-and-build:
-    name: Test & Build
+  sonarqube:
+    name: SonarQube
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +26,7 @@ jobs:
       - name: Run tests with coverage
         run: go test -coverprofile=coverage.out ./...
       - name: SonarQube Scan
-        if: env.SONAR_TOKEN != ''
+        if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
