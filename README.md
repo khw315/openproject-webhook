@@ -195,12 +195,51 @@ curl -X POST http://localhost:8080/webhook \
 
 ## Architecture
 
-```
-┌────────────────────┐     POST /webhook     ┌────────────────────────┐     Telegram Bot API     ┌──────────────────┐
-│                    │ ────────────────────▶ │                        │ ───────────────────────▶ │                  │
-│ OpenProject Server │   (JSON + HMAC-SHA1)  │ Webhook Forwarder (Go) │      (HTML Message)      │  Telegram Chat   │
-│                    │                       │      Port: 8080        │                          │ (Group / Channel)│
-└────────────────────┘                       └────────────────────────┘                          └──────────────────┘
+```mermaid
+flowchart LR
+    subgraph OpenProject["OpenProject Server"]
+        direction TB
+        WP["Work Packages & Comments"]
+        TE["Time Entries"]
+        PRJ["Projects & Memberships"]
+    end
+
+    subgraph Forwarder["Go Webhook Forwarder (:8080)"]
+        direction TB
+        WH["POST /webhook"]
+        SEC{"HMAC-SHA1<br/>Verification"}
+        PARSER["JSON Parser & Models"]
+        FMT["Message Formatter"]
+        TGClient["Telegram Client"]
+        HEALTH["GET /health"]
+
+        WH --> SEC
+        SEC -- "Valid / Disabled" --> PARSER
+        PARSER --> FMT
+        FMT --> TGClient
+    end
+
+    subgraph Telegram["Telegram"]
+        direction TB
+        BOT["Telegram Bot API"]
+        CHAT["Target Chat / Group / Channel"]
+        BOT --> CHAT
+    end
+
+    WP -->|"JSON Payload"| WH
+    TE -->|"JSON Payload"| WH
+    PRJ -->|"JSON Payload"| WH
+    TGClient -->|"sendMessage (HTML)"| BOT
+
+    classDef op fill:#eef2ff,stroke:#6366f1,stroke-width:1.5px,color:#1e1b4b;
+    classDef forwarder fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#14532d;
+    classDef tg fill:#f0f9ff,stroke:#0284c7,stroke-width:1.5px,color:#0c4a6e;
+    classDef health fill:#f8fafc,stroke:#94a3b8,stroke-width:1px,color:#334155;
+
+    class WP,TE,PRJ op;
+    class WH,SEC,PARSER,FMT,TGClient forwarder;
+    class HEALTH health;
+    class BOT,CHAT tg;
 ```
 
 ## Project Structure
