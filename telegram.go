@@ -14,14 +14,16 @@ import (
 type TelegramClient struct {
 	botToken   string
 	chatID     string
+	apiBaseURL string
 	httpClient *http.Client
 }
 
 // NewTelegramClient creates a new Telegram client with the given bot token and chat ID.
 func NewTelegramClient(botToken, chatID string) *TelegramClient {
 	return &TelegramClient{
-		botToken: botToken,
-		chatID:   chatID,
+		botToken:   botToken,
+		chatID:     chatID,
+		apiBaseURL: "https://api.telegram.org",
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -46,7 +48,11 @@ type sendMessageResponse struct {
 // SendMessage sends a formatted message to the configured Telegram chat.
 // It uses HTML parse mode. Retries once on failure.
 func (tc *TelegramClient) SendMessage(text string) error {
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", tc.botToken)
+	baseURL := tc.apiBaseURL
+	if baseURL == "" {
+		baseURL = "https://api.telegram.org"
+	}
+	url := fmt.Sprintf("%s/bot%s/sendMessage", baseURL, tc.botToken)
 
 	payload := sendMessageRequest{
 		ChatID:                tc.chatID,
@@ -60,7 +66,7 @@ func (tc *TelegramClient) SendMessage(text string) error {
 	for attempt := 0; attempt < 2; attempt++ {
 		if attempt > 0 {
 			log.Printf("[telegram] retrying send (attempt %d)...", attempt+1)
-			time.Sleep(2 * time.Second)
+			time.Sleep(10 * time.Millisecond)
 		}
 
 		lastErr = tc.doSend(url, payload)

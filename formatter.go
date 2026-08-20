@@ -295,7 +295,10 @@ func eventLabel(event string) string {
 	case "deleted":
 		return "Deleted"
 	default:
-		return strings.Title(event)
+		if len(event) > 0 {
+			return strings.ToUpper(event[:1]) + event[1:]
+		}
+		return event
 	}
 }
 
